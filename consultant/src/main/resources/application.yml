@@ -1,0 +1,92 @@
+server:
+  port: 8080
+
+logging:
+  level:
+    dev.langchain4j: debug
+
+# =========================
+# LangChain4j / DashScope
+# =========================
+langchain4j:
+  open-ai:
+    chat-model:
+      base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+      api-key: ${API_KEY}
+      model-name: qwen-plus
+      log-requests: true
+      log-responses: true
+
+    streaming-chat-model:
+      base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+      api-key: ${API_KEY}
+      model-name: qwen-plus
+      log-requests: true
+      log-responses: true
+
+  dashscope:
+    agent-id: 6a1f2b53e2c54551a97de1919c88d1c7
+
+  community:
+    redis:
+      host: redis
+      port: 6379
+
+# =========================
+# Spring
+# =========================
+spring:
+  # ---------- Redis ----------
+  data:
+    redis:
+      host: redis
+      port: 6379
+
+  # ---------- MySQL ----------
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://mysql:3306/volunteer?serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:1234}
+
+  # ---------- Kafka ----------
+  kafka:
+    bootstrap-servers: kafka:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: travel-plan-log-group
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: com.example.aiconsultant.pojo
+    template:
+      default-topic: travel-plan-logs
+    topics:
+      chat-messages: chat-messages
+
+# =========================
+# MyBatis
+# =========================
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true
+
+# =========================
+# Third-party API Keys
+# =========================
+bigmodel-api-key: ${BIGMODEL_API_KEY}
+amap-api-key: ${AMAP_API_KEY}
+
+# =========================
+# Aliyun OSS
+# =========================
+aliyun:
+  oss:
+    access-key-id: ${OSS_ACCESS_KEY_ID}
+    access-key-secret: ${OSS_ACCESS_KEY_SECRET}
+    endpoint: ${OSS_ENDPOINT:https://oss-cn-beijing.aliyuncs.com}
+    bucket-name: ${OSS_BUCKET_NAME:java-1120619657}
+    region: ${OSS_REGION:cn-beijing}
+    domain: ${OSS_DOMAIN:https://java-1120619657.oss-cn-beijing.aliyuncs.com}

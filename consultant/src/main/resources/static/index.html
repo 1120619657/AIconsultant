@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI旅行助手</title>
+    <link href="https://unpkg.com/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+
+        /* 滚动条样式 */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+
+        /* 输入框自适应高度 */
+        textarea {
+            min-height: 44px;
+            max-height: 200px;
+            transition: height 0.2s;
+        }
+
+        /* 加载动画 */
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 0.5;
+            }
+            50% {
+                opacity: 1;
+            }
+        }
+
+        .animate-pulse {
+            animation: pulse 1.5s infinite;
+        }
+
+        .delay-100 {
+            animation-delay: 0.1s;
+        }
+
+        .delay-200 {
+            animation-delay: 0.2s;
+        }
+
+        /* 打字机效果 */
+        .typing-cursor::after {
+            content: "|";
+            animation: blink 1s step-end infinite;
+        }
+
+        @keyframes blink {
+            from, to {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+<div id="app" class="flex flex-col h-screen bg-gray-50">
+    <!-- 登录注册表单 -->
+    <div v-if="!isLoggedIn" class="flex items-center justify-center flex-1 bg-gray-50">
+        <div class="w-full max-w-md bg-white rounded-lg shadow-lg p-8">
+            <div class="text-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">{{ isRegisterMode ? '注册' : '登录' }}</h2>
+                <p class="text-gray-600 mt-2">AI旅行助手</p>
+            </div>
+
+            <form @submit.prevent="handleSubmit">
+                <!-- 用户名 -->
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="username">
+                        用户名
+                    </label>
+                    <input
+                            type="text"
+                            id="username"
+                            v-model="formData.username"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+                            placeholder="请输入用户名"
+                            required
+                    >
+                </div>
+
+                <!-- 密码 -->
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="password">
+                        密码
+                    </label>
+                    <input
+                            type="password"
+                            id="password"
+                            v-model="formData.password"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+                            placeholder="请输入密码"
+                            required
+                    >
+                </div>
+
+                <!-- 注册额外字段 -->
+                <template v-if="isRegisterMode">
+                    <!-- 邮箱 -->
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="email">
+                            邮箱
+                        </label>
+                        <input
+                                type="email"
+                                id="email"
+                                v-model="formData.email"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+                                placeholder="请输入邮箱"
+                                required
+                        >
+                    </div>
+
+                    <!-- 手机号 -->
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="phone">
+                            手机号
+                        </label>
+                        <input
+                                type="tel"
+                                id="phone"
+                                v-model="formData.phone"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+                                placeholder="请输入手机号"
+                                required
+                        >
+                    </div>
+                </template>
+
+                <!-- 验证码 -->
+                <div class="mb-4 flex items-center">
+                    <div class="flex-1 mr-3">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="captcha">
+                            验证码
+                        </label>
+                        <input
+                                type="text"
+                                id="captcha"
+                                v-model="formData.captcha"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+                                placeholder="请输入验证码"
+                                required
+                        >
+                    </div>
+                    <div>
+                        <img
+                                :src="captchaUrl"
+                                @click="refreshCaptcha"
+                                class="cursor-pointer h-12 rounded-lg border border-gray-300"
+                                alt="验证码"
+                        >
+                    </div>
+                </div>
+
+                <!-- 错误信息 -->
+                <div v-if="errorMessage" class="mb-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm">
+                    {{ errorMessage }}
+                </div>
+
+                <!-- 提交按钮 -->
+                <div class="mb-4">
+                    <button
+                            type="submit"
+                            class="w-full bg-gray-800 hover:bg-gray-900 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                            :disabled="isLoading"
+                    >
+                        <i v-if="isLoading" class="fas fa-spinner fa-spin mr-2"></i>
+                        {{ isRegisterMode ? '注册' : '登录' }}
+                    </button>
+                </div>
+
+                <!-- 切换登录/注册 -->
+                <div class="text-center">
+                    <button
+                            type="button"
+                            @click="toggleMode"
+                            class="text-gray-600 hover:text-gray-800 text-sm font-bold"
+                    >
+                        {{ isRegisterMode ? '已有账号？立即登录' : '没有账号？立即注册' }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 聊天界面 -->
+    <template v-else>
+        <div class="flex flex-1 overflow-hidden">
+            <!-- 侧边栏 -->
+            <aside :class="['w-64 bg-white border-r overflow-y-auto', darkMode ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200']">
+                <div class="p-4 border-b" :class="darkMode ? 'border-gray-700' : 'border-gray-200'">
+                    <button
+                            @click="createNewConversation"
+                            class="w-full flex items-center justify-center p-3 rounded-lg bg-gray-800 hover:bg-gray-900 text-white font-medium"
+                    >
+                        <i class="fas fa-plus mr-2"></i>
+                        新建会话
+                    </button>
+                </div>
+                
+                <div class="p-2">
+                    <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-2" :class="darkMode ? 'text-gray-400' : 'text-gray-500'">
+                        历史会话
+                    </h3>
+                    <div class="space-y-1">
+                        <div
+                                v-for="conversation in conversations"
+                                :key="conversation.id"
+                                @click="switchConversation(conversation)"
+                                :class="[
+                                    'p-3 rounded-lg cursor-pointer transition-colors duration-150 relative',
+                                    selectedConversation?.id === conversation.id
+                                        ? darkMode ? 'bg-gray-700' : 'bg-gray-100'
+                                        : darkMode ? 'hover:bg-gray-800' : 'hover:bg-gray-50'
+                                ]"
+                        >
+                            <div class="font-medium text-sm truncate" :class="darkMode ? 'text-gray-300' : 'text-gray-800'">
+                                {{ conversation.title }}
+                            </div>
+                            <div class="text-xs text-gray-500 mt-1 truncate" :class="darkMode ? 'text-gray-400' : 'text-gray-500'">
+                                {{ formatDate(conversation.updateTime) }}
+                            </div>
+                            <button
+                                    @click.stop="deleteConversation(conversation.id)"
+                                    class="absolute top-1 right-1 p-1 rounded-full text-gray-400 hover:text-red-500 opacity-0 hover:opacity-100 transition-opacity"
+                            >
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                        
+                        <div v-if="conversations.length === 0" class="p-6 text-center">
+                            <div class="text-gray-400 mb-3">
+                                <i class="fas fa-comments text-4xl"></i>
+                            </div>
+                            <p class="text-sm text-gray-500" :class="darkMode ? 'text-gray-400' : 'text-gray-500'">
+                                还没有会话记录
+                            </p>
+                            <p class="text-xs text-gray-400 mt-2" :class="darkMode ? 'text-gray-500' : 'text-gray-400'">
+                                点击上方按钮开始新会话
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- 主内容区 -->
+            <div class="flex-1 flex flex-col overflow-hidden">
+                <!-- 顶部导航栏 -->
+                <header class="bg-white shadow-sm py-3 px-4 flex items-center justify-between" :class="darkMode ? 'bg-gray-900 border-b border-gray-700' : 'bg-white border-b border-gray-200'">
+                    <div class="flex items-center">
+                        <div class="text-xl font-bold text-gray-800" :class="darkMode ? 'text-gray-100' : 'text-gray-800'">AI旅行助手</div>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <!-- 用户头像 -->
+                        <div class="relative">
+                            <img
+                                    :src="currentUser?.avatar || 'https://picsum.photos/id/237/40/40'"
+                                    @click="openAvatarModal"
+                                    class="w-10 h-10 rounded-full cursor-pointer hover:opacity-80 transition-opacity"
+                                    alt="用户头像"
+                            >
+                        </div>
+                        <button @click="toggleDarkMode" class="p-2 rounded-full hover:bg-gray-100" :class="darkMode ? 'hover:bg-gray-800' : 'hover:bg-gray-100'">
+                            <i :class="darkMode ? 'fas fa-moon text-gray-300' : 'fas fa-sun text-gray-800'"></i>
+                        </button>
+                        <button @click="logout" class="p-2 rounded-full hover:bg-gray-100" :class="darkMode ? 'hover:bg-gray-800' : 'hover:bg-gray-100'">
+                            <i :class="darkMode ? 'fas fa-sign-out-alt text-gray-300' : 'fas fa-sign-out-alt text-gray-800'"></i>
+                        </button>
+                    </div>
+                </header>
+
+                <!-- 聊天内容区域 -->
+                <main class="flex-1 overflow-y-auto p-4 space-y-6" ref="chatContainer" :class="{ 'bg-gray-800': darkMode }">
+                    <div v-for="(message, index) in messages" :key="index" class="max-w-3xl mx-auto">
+                        <div :class="['flex', message.role === 'user' ? 'justify-end' : 'justify-start']">
+                            <div :class="['flex items-start space-x-3', message.role === 'user' ? 'flex-row-reverse space-x-reverse' : '']">
+                                <div :class="['w-8 h-8 rounded-full flex items-center justify-center',
+                                            message.role === 'user' ? 'bg-gray-200 text-gray-800' : 'bg-gray-200 text-gray-800',
+                                            darkMode && message.role === 'assistant' ? 'bg-gray-700 text-gray-300' : '']">
+                                    <i :class="message.role === 'user' ? 'fas fa-user' : 'fas fa-robot'"></i>
+                                </div>
+                                <div :class="['p-3 rounded-lg max-w-lg',
+                                            message.role === 'user'
+                                                ? 'bg-gray-800 text-white'
+                                                : darkMode
+                                                    ? 'bg-gray-700 text-gray-100 border-gray-600'
+                                                    : 'bg-white shadow border border-gray-200']">
+                                    <div v-if="message.role === 'assistant' && message.isLoading" class="flex space-x-2">
+                                        <div :class="['w-2 h-2 rounded-full', darkMode ? 'bg-gray-400' : 'bg-gray-300', 'animate-pulse']"></div>
+                                        <div :class="['w-2 h-2 rounded-full', darkMode ? 'bg-gray-400' : 'bg-gray-300', 'animate-pulse delay-100']"></div>
+                                        <div :class="['w-2 h-2 rounded-full', darkMode ? 'bg-gray-400' : 'bg-gray-300', 'animate-pulse delay-200']"></div>
+                                    </div>
+                                    <div v-else class="whitespace-pre-wrap">
+                                            <span v-for="(char, charIndex) in message.content" :key="charIndex"
+                                                  :class="{'opacity-0': charIndex >= message.visibleChars, 'fade-in': charIndex < message.visibleChars}">
+                                                {{ char }}
+                                            </span>
+                                        <span v-if="message.isStreaming" class="typing-cursor"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+
+                <!-- 输入框区域 -->
+                <footer :class="['border-t p-4', darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200']">
+                    <div class="max-w-3xl mx-auto relative">
+                        <div class="flex items-center">
+                                <textarea
+                                        v-model="userInput"
+                                        @keydown.enter.exact.prevent="sendMessage"
+                                        @keydown.ctrl.enter.exact.prevent="sendMessage"
+                                        @keydown.esc.exact="stopResponse"
+                                        placeholder="输入您的旅行问题..."
+                                        :class="['flex-1 border rounded-lg py-3 px-4 pr-12 focus:outline-none focus:ring-2 resize-none',
+                                            darkMode
+                                                ? 'bg-gray-700 border-gray-600 text-white focus:ring-gray-400 placeholder-gray-400'
+                                                : 'border-gray-200 focus:ring-gray-500 focus:border-transparent']"
+                                        rows="1"
+                                        ref="textarea"
+                                        @input="adjustTextareaHeight"
+                                ></textarea>
+
+                            <button
+                                            @click="isLoading ? stopResponse() : sendMessage()"
+                                            :disabled="!userInput.trim() && !isLoading"
+                                            :class="['ml-2 p-3 rounded-lg',
+                                                    isLoading
+                                                        ? 'bg-gray-800 hover:bg-gray-900 text-white'
+                                                        : 'bg-gray-800 hover:bg-gray-900 text-white',
+                                                    'disabled:opacity-50 disabled:cursor-not-allowed']"
+                                    >
+                                <i :class="isLoading ? 'fas fa-stop' : 'fas fa-paper-plane'"></i>
+                            </button>
+                        </div>
+                    </div>
+                </footer>
+            </div>
+        </div>
+        
+        <!-- 头像上传模态框 -->
+        <div v-if="showAvatarModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md" :class="darkMode ? 'bg-gray-800' : 'bg-white'">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-gray-800" :class="darkMode ? 'text-gray-100' : 'text-gray-800'">更改头像</h3>
+                    <button @click="closeAvatarModal" class="text-gray-500 hover:text-gray-700" :class="darkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <div class="text-center mb-6">
+                    <div class="relative mx-auto w-32 h-32 mb-4">
+                        <img
+                                :src="previewAvatar || currentUser?.avatar || 'https://picsum.photos/id/237/128/128'"
+                                class="w-full h-full rounded-full object-cover border-4 border-gray-200"
+                                :class="darkMode ? 'border-gray-700' : 'border-gray-200'"
+                                alt="预览头像"
+                        >
+                    </div>
+                    <p class="text-sm text-gray-600" :class="darkMode ? 'text-gray-400' : 'text-gray-600'">点击下方按钮选择新头像</p>
+                </div>
+                
+                <div class="mb-6">
+                    <input
+                            type="file"
+                            id="avatarUpload"
+                            ref="fileInput"
+                            @change="handleFileChange"
+                            accept="image/*"
+                            class="hidden"
+                    >
+                    <button
+                            @click="triggerFileInput"
+                            class="w-full bg-gray-800 hover:bg-gray-900 text-white font-medium py-2 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                    >
+                        <i class="fas fa-upload mr-2"></i>选择图片
+                    </button>
+                </div>
+                
+                <div v-if="selectedFile" class="mb-6 p-3 bg-gray-100 rounded-lg text-sm" :class="darkMode ? 'bg-gray-700' : 'bg-gray-100'">
+                    <div class="flex items-center justify-between">
+                        <span :class="darkMode ? 'text-gray-300' : 'text-gray-700'">
+                            <i class="fas fa-file-image mr-2"></i>{{ selectedFile.name }}
+                        </span>
+                        <span class="text-xs text-gray-500" :class="darkMode ? 'text-gray-400' : 'text-gray-500'">
+                            {{ formatFileSize(selectedFile.size) }}
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="flex space-x-3">
+                    <button
+                            @click="closeAvatarModal"
+                            class="flex-1 py-2 px-4 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                            :class="darkMode ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : ''"
+                    >
+                        取消
+                    </button>
+                    <button
+                            @click="uploadAvatar"
+                            :disabled="!selectedFile || isUploading"
+                            class="flex-1 bg-gray-800 hover:bg-gray-900 text-white font-medium py-2 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <i v-if="isUploading" class="fas fa-spinner fa-spin mr-2"></i>
+                        {{ isUploading ? '上传中...' : '确认上传' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </template>
+</div>
+
+<script>
+    const {createApp, ref, nextTick, onMounted, watch} = Vue;
+
+    createApp({
+        setup() {
+            // 登录注册相关
+            const isLoggedIn = ref(false);
+            const isRegisterMode = ref(false);
+            const isLoading = ref(false);
+            const errorMessage = ref('');
+            const captchaUuid = ref('');
+            const captchaUrl = ref('');
+            const currentUser = ref(null);
+            const formData = ref({
+                username: '',
+                password: '',
+                email: '',
+                phone: '',
+                captcha: ''
+            });
+            
+            // 头像上传相关
+            const showAvatarModal = ref(false);
+            const selectedFile = ref(null);
+            const previewAvatar = ref('');
+            const isUploading = ref(false);
+            const fileInput = ref(null);
+
+            // 聊天相关
+            const messages = ref([]);
+            const userInput = ref('');
+            const chatContainer = ref(null);
+            const textarea = ref(null);
+            const darkMode = ref(false);
+
+            // 会话相关
+            const conversations = ref([]);
+            const selectedConversation = ref(null);
+            const memoeryId = ref(Date.now().toString());
+            let controller = null;
+            let typingInterval = null;
+            let currentTypingIndex = 0;
+
+            // 生成新的UUID
+            const generateUuid = () => {
+                return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                    const r = Math.random() * 16 | 0;
+                    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                    return v.toString(16);
+                });
+            };
+
+            // 刷新验证码
+            const refreshCaptcha = () => {
+                captchaUuid.value = generateUuid();
+                captchaUrl.value = `/auth/captcha?uuid=${captchaUuid.value}&t=${Date.now()}`;
+            };
+
+            // 表单提交处理
+            const handleSubmit = () => {
+                console.log('表单提交事件触发');
+                console.log('当前模式:', isRegisterMode.value ? '注册' : '登录');
+                if (isRegisterMode.value) {
+                    register();
+                } else {
+                    login();
+                }
+            };
+
+            // 切换登录/注册模式
+            const toggleMode = () => {
+                console.log('切换登录/注册模式');
+                isRegisterMode.value = !isRegisterMode.value;
+                errorMessage.value = '';
+                refreshCaptcha();
+            };
+
+            // 注册
+            const register = async () => {
+                console.log('注册方法被调用');
+                console.log('表单数据:', formData.value);
+                isLoading.value = true;
+                errorMessage.value = '';
+
+                try {
+                    console.log('发送注册请求到:', '/auth/register');
+                    const response = await fetch('/auth/register', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            ...formData.value,
+                            uuid: captchaUuid.value
+                        })
+                    });
+                    console.log('注册响应状态:', response.status);
+
+                    const data = await response.json();
+                    if (data.success) {
+                        // 注册成功后自动登录
+                        login();
+                    } else {
+                        errorMessage.value = data.message;
+                        refreshCaptcha();
+                    }
+                } catch (error) {
+                    errorMessage.value = '注册失败，请稍后重试';
+                    console.error('注册失败:', error);
+                } finally {
+                    isLoading.value = false;
+                }
+            };
+
+            // 登录
+            const login = async () => {
+                console.log('登录方法被调用');
+                console.log('表单数据:', formData.value);
+                isLoading.value = true;
+                errorMessage.value = '';
+
+                try {
+                    console.log('发送登录请求到:', '/auth/login');
+                    const response = await fetch('/auth/login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            username: formData.value.username,
+                            password: formData.value.password,
+                            uuid: captchaUuid.value,
+                            captcha: formData.value.captcha
+                        })
+                    });
+                    console.log('登录响应状态:', response.status);
+
+                    const data = await response.json();
+                    if (data.success) {
+                        // 保存token
+                        localStorage.setItem('token', data.token);
+                        localStorage.setItem('user', JSON.stringify(data.user));
+                        currentUser.value = data.user;
+                        isLoggedIn.value = true;
+                        initChat();
+                    } else {
+                        errorMessage.value = data.message;
+                        refreshCaptcha();
+                    }
+                } catch (error) {
+                    errorMessage.value = '登录失败，请稍后重试';
+                    console.error('登录失败:', error);
+                } finally {
+                    isLoading.value = false;
+                }
+            };
+            
+            // 打开头像上传模态框
+            const openAvatarModal = () => {
+                showAvatarModal.value = true;
+                previewAvatar.value = '';
+                selectedFile.value = null;
+            };
+            
+            // 关闭头像上传模态框
+            const closeAvatarModal = () => {
+                showAvatarModal.value = false;
+                previewAvatar.value = '';
+                selectedFile.value = null;
+                if (fileInput.value) {
+                    fileInput.value.value = '';
+                }
+            };
+            
+            // 触发文件选择
+            const triggerFileInput = () => {
+                fileInput.value?.click();
+            };
+            
+            // 处理文件选择
+            const handleFileChange = (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    selectedFile.value = file;
+                    // 预览图片
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        previewAvatar.value = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+            
+            // 格式化文件大小
+            const formatFileSize = (bytes) => {
+                if (bytes < 1024) {
+                    return bytes + ' B';
+                } else if (bytes < 1024 * 1024) {
+                    return (bytes / 1024).toFixed(1) + ' KB';
+                } else {
+                    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+                }
+            };
+            
+            // 上传头像
+            const uploadAvatar = async () => {
+                if (!selectedFile.value) return;
+                
+                isUploading.value = true;
+                try {
+                    const token = localStorage.getItem('token');
+                    const formData = new FormData();
+                    formData.append('file', selectedFile.value);
+                    
+                    const response = await fetch('/auth/upload-avatar', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: formData
+                    });
+                    
+                    const data = await response.json();
+                    if (data.success) {
+                        // 更新用户信息
+                        currentUser.value.avatar = data.avatar;
+                        localStorage.setItem('user', JSON.stringify(currentUser.value));
+                        closeAvatarModal();
+                    } else {
+                        alert(data.message || '上传失败');
+                    }
+                } catch (error) {
+                    console.error('上传头像失败:', error);
+                    alert('上传失败，请稍后重试');
+                } finally {
+                    isUploading.value = false;
+                }
+            };
+
+            // 退出登录
+            const logout = () => {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                isLoggedIn.value = false;
+                currentUser.value = null;
+                messages.value = [];
+            };
+
+            // 初始化聊天
+            const initChat = () => {
+                messages.value = [];
+                messages.value.push({
+                    role: 'assistant',
+                    content: '你好！我是AI旅行助手，请问有什么旅行相关的问题需要帮助？',
+                    isLoading: false,
+                    visibleChars: 0,
+                    isStreaming: false
+                });
+                messages.value[0].visibleChars = messages.value[0].content.length;
+                scrollToBottom();
+                loadConversations();
+            };
+
+            // 加载会话列表
+            const loadConversations = async () => {
+                try {
+                    const token = localStorage.getItem('token');
+                    const response = await fetch('/conversation/list', {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+                    const data = await response.json();
+                    if (data.success) {
+                        conversations.value = data.data;
+                    }
+                } catch (error) {
+                    console.error('加载会话列表失败:', error);
+                }
+            };
+
+            // 新建会话
+            const createNewConversation = async () => {
+                try {
+                    const token = localStorage.getItem('token');
+                    const response = await fetch('/conversation/create', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ title: '新会话' })
+                    });
+                    const data = await response.json();
+                    if (data.success) {
+                        conversations.value.unshift(data.data);
+                        switchConversation(data.data);
+                    }
+                } catch (error) {
+                    console.error('创建会话失败:', error);
+                }
+            };
+
+            // 切换会话
+            const switchConversation = (conversation) => {
+                selectedConversation.value = conversation;
+                memoeryId.value = conversation.memoryId;
+                loadConversationMessages(conversation.id);
+            };
+
+            // 加载会话消息
+            const loadConversationMessages = async (conversationId) => {
+                try {
+                    const token = localStorage.getItem('token');
+                    const response = await fetch(`/conversation/messages/${conversationId}`, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+                    const data = await response.json();
+                    if (data.success) {
+                        messages.value = data.data.map(msg => ({
+                            role: msg.role,
+                            content: msg.content,
+                            isLoading: false,
+                            visibleChars: msg.content.length,
+                            isStreaming: false
+                        }));
+                        scrollToBottom();
+                    }
+                } catch (error) {
+                    console.error('加载会话消息失败:', error);
+                }
+            };
+
+            // 删除会话
+            const deleteConversation = async (id) => {
+                try {
+                    const token = localStorage.getItem('token');
+                    const response = await fetch(`/conversation/delete/${id}`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+                    const data = await response.json();
+                    if (data.success) {
+                        conversations.value = conversations.value.filter(conv => conv.id !== id);
+                        if (selectedConversation.value && selectedConversation.value.id === id) {
+                            selectedConversation.value = null;
+                            messages.value = [];
+                            initChat();
+                        }
+                    }
+                } catch (error) {
+                    console.error('删除会话失败:', error);
+                }
+            };
+
+            // 更新会话标题
+            const updateConversationTitle = async (conversationId, title) => {
+                try {
+                    const token = localStorage.getItem('token');
+                    const response = await fetch('/conversation/update', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ id: conversationId, title: title })
+                    });
+                    const data = await response.json();
+                    if (data.success) {
+                        const conversation = conversations.value.find(conv => conv.id === conversationId);
+                        if (conversation) {
+                            conversation.title = title;
+                        }
+                    }
+                } catch (error) {
+                    console.error('更新会话标题失败:', error);
+                }
+            };
+
+            // 格式化日期
+            const formatDate = (dateString) => {
+                const date = new Date(dateString);
+                const now = new Date();
+                const diff = now - date;
+                const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                
+                if (days === 0) {
+                    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                } else if (days === 1) {
+                    return '昨天 ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                } else if (days < 7) {
+                    return days + '天前';
+                } else {
+                    return date.toLocaleDateString();
+                }
+            };
+
+            // 调整文本区域高度
+            const adjustTextareaHeight = () => {
+                const textareaEl = textarea.value;
+                if (textareaEl) {
+                    textareaEl.style.height = 'auto';
+                    textareaEl.style.height = `${Math.min(textareaEl.scrollHeight, 200)}px`;
+                }
+            };
+
+            // 滚动到底部
+            const scrollToBottom = () => {
+                nextTick(() => {
+                    if (chatContainer.value) {
+                        chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
+                    }
+                });
+            };
+
+            // 切换暗黑模式
+            const toggleDarkMode = () => {
+                darkMode.value = !darkMode.value;
+                localStorage.setItem('darkMode', darkMode.value);
+            };
+            
+            // 初始化应用
+            const initApp = () => {
+                // 检查本地存储中的用户信息
+                const savedUser = localStorage.getItem('user');
+                const savedDarkMode = localStorage.getItem('darkMode');
+                
+                if (savedUser) {
+                    currentUser.value = JSON.parse(savedUser);
+                    isLoggedIn.value = true;
+                    initChat();
+                }
+                
+                if (savedDarkMode !== null) {
+                    darkMode.value = savedDarkMode === 'true';
+                }
+                
+                // 初始化验证码
+                refreshCaptcha();
+            };
+            
+            // 页面加载完成后初始化
+            onMounted(() => {
+                initApp();
+            });
+
+            // 新建会话
+            const startNewConversation = () => {
+                // 清空聊天记录
+                messages.value = [];
+                // 生成新的 memoryId
+                memoeryId.value = Date.now().toString();
+                // 添加欢迎消息
+                messages.value.push({
+                    role: 'assistant',
+                    content: '你好！我是AI旅行助手，请问有什么旅行相关的问题需要帮助？',
+                    isLoading: false,
+                    visibleChars: 0,
+                    isStreaming: false
+                });
+                // 确保欢迎消息完全可见
+                messages.value[0].visibleChars = messages.value[0].content.length;
+                // 滚动到底部
+                scrollToBottom();
+                // 聚焦输入框
+                nextTick(() => {
+                    if (textarea.value) {
+                        textarea.value.focus();
+                    }
+                });
+            };
+
+            // 模拟逐字打印效果
+            const startTypingEffect = (messageIndex) => {
+                const message = messages.value[messageIndex];
+                if (!message || message.visibleChars >= message.content.length) {
+                    clearInterval(typingInterval);
+                    typingInterval = null;
+                    messages.value[messageIndex].isStreaming = false;
+                    return;
+                }
+
+                messages.value[messageIndex].visibleChars++;
+                scrollToBottom();
+            };
+
+            // 发送消息
+            const sendMessage = async () => {
+                if (!userInput.value.trim() || isLoading.value) return;
+
+                // 中止之前的请求
+                if (controller) {
+                    controller.abort();
+                }
+                controller = new AbortController();
+
+                const userMessage = {
+                    role: 'user',
+                    content: userInput.value.trim(),
+                    isLoading: false,
+                    visibleChars: userInput.value.trim().length,
+                    isStreaming: false
+                };
+
+                messages.value.push(userMessage);
+
+                const assistantMessage = {
+                    role: 'assistant',
+                    content: '',
+                    isLoading: true,
+                    visibleChars: 0,
+                    isStreaming: true
+                };
+
+                messages.value.push(assistantMessage);
+
+                userInput.value = '';
+                adjustTextareaHeight();
+                scrollToBottom();
+
+                isLoading.value = true;
+
+                try {
+                    const response = await fetch(`/chat?message=${encodeURIComponent(userMessage.content)}&memoryId=${memoeryId.value}`, {
+                        signal: controller.signal,
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder('utf-8');
+                    let buffer = '';
+                    let messageIndex = messages.value.length - 1;
+
+                    // 先清除之前的打字效果
+                    if (typingInterval) {
+                        clearInterval(typingInterval);
+                        typingInterval = null;
+                    }
+
+                    // 开始流式处理
+                    while (true) {
+                        const {done, value} = await reader.read();
+                        if (done) break;
+
+                        const chunk = decoder.decode(value, {stream: true});
+                        buffer += chunk;
+
+                        // 直接更新内容
+                        messages.value[messageIndex].content = buffer;
+                        messages.value[messageIndex].isLoading = false;
+
+                        // 启动打字效果
+                        if (!typingInterval) {
+                            typingInterval = setInterval(() => {
+                                startTypingEffect(messageIndex);
+                            }, 20); // 调整这个值可以改变打字速度
+                        }
+
+                        scrollToBottom();
+                    }
+
+                } catch (error) {
+                    if (error.name === 'AbortError') {
+                        console.log('请求被用户中止');
+                    } else {
+                        console.error('请求出错:', error);
+                        const lastMessage = messages.value[messages.value.length - 1];
+                        lastMessage.content = '抱歉，请求过程中出现错误: ' + error.message;
+                        lastMessage.visibleChars = lastMessage.content.length;
+                    }
+                } finally {
+                    const lastMessage = messages.value[messages.value.length - 1];
+                    lastMessage.isLoading = false;
+                    lastMessage.isStreaming = false;
+
+                    // 确保所有字符都可见
+                    if (lastMessage.visibleChars < lastMessage.content.length) {
+                        lastMessage.visibleChars = lastMessage.content.length;
+                    }
+
+                    isLoading.value = false;
+                    controller = null;
+
+                    if (typingInterval) {
+                        clearInterval(typingInterval);
+                        typingInterval = null;
+                    }
+
+                    scrollToBottom();
+                    
+                    // 保存AI模型的完整响应到数据库
+                    const saveAiResponse = async () => {
+                        try {
+                            const token = localStorage.getItem('token');
+                            const response = await fetch('/chat/save-ai-response', {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': `Bearer ${token}`,
+                                    'Content-Type': 'application/x-www-form-urlencoded'
+                                },
+                                body: new URLSearchParams({
+                                    memoryId: memoeryId.value,
+                                    content: lastMessage.content
+                                })
+                            });
+                            await response.json();
+                        } catch (error) {
+                            console.error('保存AI响应失败:', error);
+                        }
+                    };
+                    saveAiResponse();
+                    
+                    // 如果是新会话，更新会话标题
+                    if (selectedConversation.value && selectedConversation.value.title === '新会话') {
+                        const title = lastMessage.content.length > 20 ? lastMessage.content.substring(0, 20) + '...' : lastMessage.content;
+                        updateConversationTitle(selectedConversation.value.id, title);
+                    }
+                }
+            };
+
+            // 停止响应
+            const stopResponse = () => {
+                if (controller) {
+                    controller.abort();
+                    const lastMessage = messages.value[messages.value.length - 1];
+                    lastMessage.isLoading = false;
+                    lastMessage.isStreaming = false;
+
+                    if (lastMessage.visibleChars < lastMessage.content.length) {
+                        lastMessage.visibleChars = lastMessage.content.length;
+                    }
+
+                    isLoading.value = false;
+                    controller = null;
+
+                    if (typingInterval) {
+                        clearInterval(typingInterval);
+                        typingInterval = null;
+                    }
+                }
+            };
+
+            // 初始化
+            onMounted(() => {
+                // 检查登录状态
+                const token = localStorage.getItem('token');
+                if (token) {
+                    isLoggedIn.value = true;
+                    initChat();
+                } else {
+                    // 初始化验证码
+                    refreshCaptcha();
+                }
+
+                // 检查暗黑模式偏好
+                darkMode.value = localStorage.getItem('darkMode') === 'true' ||
+                    (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            });
+
+            // 监听消息变化自动滚动
+            watch(messages, scrollToBottom, {deep: true});
+
+            return {
+                // 登录注册相关
+                isLoggedIn,
+                isRegisterMode,
+                isLoading,
+                errorMessage,
+                captchaUrl,
+                formData,
+                currentUser,
+                register,
+                login,
+                logout,
+                toggleMode,
+                refreshCaptcha,
+                handleSubmit,
+                // 聊天相关
+                messages,
+                userInput,
+                chatContainer,
+                textarea,
+                darkMode,
+                sendMessage,
+                stopResponse,
+                toggleDarkMode,
+                adjustTextareaHeight,
+                startNewConversation,
+                // 会话相关
+                conversations,
+                selectedConversation,
+                createNewConversation,
+                switchConversation,
+                deleteConversation,
+                formatDate,
+                // 头像上传相关
+                showAvatarModal,
+                previewAvatar,
+                selectedFile,
+                isUploading,
+                fileInput,
+                openAvatarModal,
+                closeAvatarModal,
+                triggerFileInput,
+                handleFileChange,
+                formatFileSize,
+                uploadAvatar
+            };
+        }
+    }).mount('#app');
+</script>
+</body>
+</html>

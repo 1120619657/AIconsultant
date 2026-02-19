@@ -1,0 +1,24 @@
+# IDE
+.idea/
+.vscode/
+
+# Documents
+*.docx
+
+# Java / AI common
+target/
+*.log
+*.tmp
+# Docker runtime data
+data/
+**/data/
+
+# MySQL
+mysql.sock
+*.sock
+ib_buffer_pool
+binlog.*
+auto.cnf
+
+# Env files
+.env

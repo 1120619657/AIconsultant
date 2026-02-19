@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "amap-weather": {
+      "url": "https://dashscope.aliyuncs.com/api/v1/mcps/amap-maps/sse",
+      "headers": {
+        "Authorization": "Bearer ${API_KEY}"
+      }
+    }
+  }
+}

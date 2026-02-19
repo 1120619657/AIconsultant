@@ -1,0 +1,112 @@
+version: "3.9"
+
+services:
+  app:
+    image: aiconsultant:latest
+    container_name: aiconsultant-app
+    ports:
+      - "8080:8080"
+    environment:
+      # ===== LangChain4j / DashScope =====
+      API_KEY: ${API_KEY}
+
+      # ===== Database =====
+      MYSQL_USER: ${MYSQL_USER:-root}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-1234}
+
+      # ===== Third-party APIs =====
+      BIGMODEL_API_KEY: ${BIGMODEL_API_KEY}
+      AMAP_API_KEY: ${AMAP_API_KEY}
+
+      # ===== Aliyun OSS =====
+      OSS_ACCESS_KEY_ID: ${OSS_ACCESS_KEY_ID}
+      OSS_ACCESS_KEY_SECRET: ${OSS_ACCESS_KEY_SECRET}
+      OSS_ENDPOINT: ${OSS_ENDPOINT:-https://oss-cn-beijing.aliyuncs.com}
+      OSS_BUCKET_NAME: ${OSS_BUCKET_NAME:-java-1120619657}
+      OSS_REGION: ${OSS_REGION:-cn-beijing}
+      OSS_DOMAIN: ${OSS_DOMAIN:-https://java-1120619657.oss-cn-beijing.aliyuncs.com}
+
+      # ===== JVM =====
+      JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
+
+      # ===== Kafka =====
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    volumes:
+      - ./src:/app/src        # 挂载本地源码
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      kafka:
+        condition: service_started
+    networks:
+      ai-net:
+        ipv4_address: 172.25.0.40
+
+  mysql:
+    image: mysql:latest
+    container_name: mysql
+    restart: always
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-1234}
+      MYSQL_DATABASE: volunteer
+      TZ: Asia/Shanghai
+    volumes:
+      - ./data:/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      ai-net:
+        ipv4_address: 172.25.0.10
+
+  redis:
+    image: redislabs/redisearch:latest
+    container_name: redisearch
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./data:/redis-data
+    networks:
+      ai-net:
+        ipv4_address: 172.25.0.30
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: kafka
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    environment:
+      KAFKA_KRAFT_MODE: "true"
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_BROKER_ID: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_NUM_PARTITIONS: 1
+    volumes:
+      - ./data:/kafka/data
+    networks:
+      - ai-net
+
+volumes:
+  mysql-data:
+  redis-data:
+  kafka-data:
+
+networks:
+  ai-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16
