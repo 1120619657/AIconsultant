@@ -1,6 +1,7 @@
 package com.example.aiconsultant.config;
 
 import com.example.aiconsultant.aiservice.ConsultantService;
+import dev.langchain4j.community.store.embedding.redis.RedisEmbeddingStore;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.loader.ClassPathDocumentLoader;
@@ -34,12 +35,16 @@ public class CommonConfig {
     private McpToolProvider mcpToolProvider;
     @Autowired
     private McpToolProvider amapToolProvider;
+    @Autowired
+    private EmbeddingModel embeddingModel;
+    @Autowired
+    private RedisEmbeddingStore redisEmbeddingStore;
     @Bean
     public ConsultantService consultantService(){
         ConsultantService consultantService = AiServices.builder(ConsultantService.class)
                 .streamingChatModel(model)
                 .chatMemoryProvider(chatMemoryProvider())
-                //.contentRetriever(contentRetriever()) // RAG 检索增强生成
+                .contentRetriever(contentRetriever()) // RAG 检索增强生成
                 .toolProvider(mcpToolProvider)
                 .toolProvider(amapToolProvider)// MCP 工具调用
                 .build();
@@ -69,7 +74,7 @@ public class CommonConfig {
         };
         return chatMemoryProvider;
     }
-    /*//构建向量数据库操作对象
+    //构建向量数据库操作对象
     //@Bean
     public EmbeddingStore store(){//embeddingStore的对象, 这个对象的名字不能重复,所以这里使用store
         //1.加载文档进内存
@@ -102,6 +107,6 @@ public class CommonConfig {
                 .maxResults(3)
                 .embeddingModel(embeddingModel)
                 .build();
-    }*/
+    }
 
 }
