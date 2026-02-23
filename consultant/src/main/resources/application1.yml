@@ -36,7 +36,7 @@ langchain4j:
 
   community:
     redis:
-      host: localhost
+      host: redis
       port: 6379
 
 # =========================
@@ -46,19 +46,19 @@ spring:
   # ---------- Redis ----------
   data:
     redis:
-      host: localhost
+      host: redis
       port: 6379
 
   # ---------- MySQL ----------
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/volunteer?serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://mysql:3306/volunteer?serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     username: ${MYSQL_USER:root}
     password: ${MYSQL_PASSWORD:1234}
 
   # ---------- Kafka ----------
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: kafka:9092
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer

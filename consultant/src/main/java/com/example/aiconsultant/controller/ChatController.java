@@ -17,7 +17,6 @@ import org.slf4j.LoggerFactory;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
-
 @RestController
 public class ChatController {
     private static final Logger log = LoggerFactory.getLogger(ChatController.class);

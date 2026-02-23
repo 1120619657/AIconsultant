@@ -6,8 +6,8 @@ USE volunteer;
 
 -- 用户表
 CREATE TABLE IF NOT EXISTS `user` (
-                                      `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
-                                      `username` VARCHAR(50) NOT NULL UNIQUE COMMENT '用户名',
+  `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+  `username` VARCHAR(50) NOT NULL UNIQUE COMMENT '用户名',
     `password` VARCHAR(100) NOT NULL COMMENT '密码',
     `email` VARCHAR(100) UNIQUE COMMENT '邮箱',
     `phone` VARCHAR(20) UNIQUE COMMENT '手机号',
@@ -22,9 +22,9 @@ CREATE TABLE IF NOT EXISTS `user` (
 
 -- 会话表
 CREATE TABLE IF NOT EXISTS `conversation` (
-                                              `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
-                                              `user_id` BIGINT NOT NULL COMMENT '用户ID',
-                                              `title` VARCHAR(255) NOT NULL COMMENT '会话标题',
+  `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+  `user_id` BIGINT NOT NULL COMMENT '用户ID',
+  `title` VARCHAR(255) NOT NULL COMMENT '会话标题',
     `memory_id` VARCHAR(100) COMMENT '会话记忆ID',
     `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
@@ -36,9 +36,9 @@ CREATE TABLE IF NOT EXISTS `conversation` (
 
 -- 消息表
 CREATE TABLE IF NOT EXISTS `message` (
-                                         `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
-                                         `conversation_id` BIGINT NOT NULL COMMENT '会话ID',
-                                         `role` VARCHAR(20) NOT NULL COMMENT '角色：user-用户，assistant-助手',
+     `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+     `conversation_id` BIGINT NOT NULL COMMENT '会话ID',
+     `role` VARCHAR(20) NOT NULL COMMENT '角色：user-用户，assistant-助手',
     `content` TEXT NOT NULL COMMENT '消息内容',
     `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `is_deleted` TINYINT NOT NULL DEFAULT 0 COMMENT '是否删除：0-未删除，1-已删除',
@@ -49,9 +49,9 @@ CREATE TABLE IF NOT EXISTS `message` (
 
 -- 日志事件表
 CREATE TABLE IF NOT EXISTS `log_event` (
-                                           `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
-                                           `timestamp` DATETIME NOT NULL,
-                                           `level` VARCHAR(20) NOT NULL,
+   `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+   `timestamp` DATETIME NOT NULL,
+   `level` VARCHAR(20) NOT NULL,
     `logger` VARCHAR(255) NOT NULL,
     `message` TEXT,
     `thread` VARCHAR(100),

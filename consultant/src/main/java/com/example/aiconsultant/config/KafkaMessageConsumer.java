@@ -11,14 +11,12 @@ import org.springframework.stereotype.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.LocalDateTime;
-
 /**
  * Kafka消息消费者，处理聊天消息的异步保存
  */
 @Component
-public class MessageConsumer {
-    private static final Logger log = LoggerFactory.getLogger(MessageConsumer.class);
+public class KafkaMessageConsumer {
+    private static final Logger log = LoggerFactory.getLogger(KafkaMessageConsumer.class);
 
     @Autowired
     private ConversationMapper conversationMapper;
